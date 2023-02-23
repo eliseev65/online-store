@@ -260,6 +260,7 @@ class CheckoutView(View):
                             shipping_address.save()
                     else:
                         messages.info(self.request, "Please fill in the required shipping address fields")
+                        return redirect('checkout')
 
                 use_default_billing = form.cleaned_data.get('use_default_billing')
                 same_billing_address = form.cleaned_data.get('same_billing_address')
@@ -315,6 +316,7 @@ class CheckoutView(View):
 
                     else:
                         messages.info(self.request, "Please fill in the required billing address fields")
+                        return redirect('checkout')
 
                 payment_option = form.cleaned_data.get('payment_option')
 
@@ -343,9 +345,15 @@ class AddCouponView(View):
             try:
                 code = form.cleaned_data.get('code')
                 order = Order.objects.get(user=self.request.user, ordered=False)
-                order.coupon = get_coupon(self.request, code)
-                order.save()
-                messages.success(self.request, "Successfully added coupon")
+
+                try:
+                    coupon = Coupon.objects.get(code=code)
+                    order.coupon = coupon
+                    order.save()
+                    messages.success(self.request, "Successfully added coupon")
+                except ObjectDoesNotExist:
+                    messages.info(self.request, "This coupon does not exist")
+                
                 return redirect('checkout')
             except ObjectDoesNotExist:
                 messages.info(self.request, "You do not have an active order")
@@ -378,7 +386,7 @@ class PaymentView(View):
         else:
             messages.warning(
                 self.request, "You have not added a billing address")
-            return redirect("core:checkout")
+            return redirect("checkout")
 
     def post(self, *args, **kwargs):
         order = Order.objects.get(user=self.request.user, ordered=False)
